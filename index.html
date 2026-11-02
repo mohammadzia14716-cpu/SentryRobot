@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sentry Robot Concept</title>
+<style>
+:root{--bg:#f6f7f7;--s1:#ffffff;--s2:#eef1f1;--tx:#15201f;--tx2:#4b5857;--mu:#7a8786;--bd:#d3dad9;--ac:#0f6e56;--wn:#a32d2d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121819;--s1:#1b2323;--s2:#243030;--tx:#e8eeee;--tx2:#aebaba;--mu:#7f8f8f;--bd:#33403f;--ac:#5dcaa5;--wn:#f09595}}
+:root[data-theme="dark"]{--bg:#121819;--s1:#1b2323;--s2:#243030;--tx:#e8eeee;--tx2:#aebaba;--mu:#7f8f8f;--bd:#33403f;--ac:#5dcaa5;--wn:#f09595}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:28px;margin:0 0 4px;font-weight:650}
+h2{font-size:17px;margin:28px 0 10px;font-weight:600}
+p{margin:0 0 10px;color:var(--tx2)}
+.sub{font-size:16px;margin-bottom:16px}
+#wrap{position:relative;height:min(64vh,480px);min-height:320px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;touch-action:none;cursor:grab}
+#cv{width:100%;height:100%;display:block}
+.hint{position:absolute;left:10px;bottom:8px;font-size:12px;color:var(--mu);max-width:55%}
+#hud{position:absolute;left:10px;top:10px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-size:13px;max-width:70%;pointer-events:none}
+#joy{position:absolute;right:14px;bottom:14px;width:110px;height:110px;border-radius:50%;background:var(--s2);border:1px solid var(--tx2);touch-action:none;cursor:pointer}
+#knob{position:absolute;left:33px;top:33px;width:44px;height:44px;border-radius:50%;background:var(--ac);pointer-events:none}
+.tag{position:absolute;min-width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:11px;padding:0 6px;background:var(--s2);border:1px solid var(--tx2);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;pointer-events:none;white-space:nowrap}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:12px 0}
+.ctl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2)}
+.ctl input[type=range]{width:120px}
+button,select{font:inherit;font-size:14px;color:var(--tx);background:var(--s1);border:1px solid var(--bd);border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover:not(:disabled){background:var(--s2)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.pri{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+button:focus-visible,select:focus-visible,input:focus-visible,.row:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.mc{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px}
+.mc .k{font-size:12px;color:var(--tx2)}
+.mc .v{font-size:20px;font-weight:600}
+.row{display:grid;grid-template-columns:28px 1.2fr 1.4fr 80px;gap:8px;padding:8px;font-size:14px;border-bottom:1px solid var(--bd);cursor:pointer;align-items:center}
+.row:hover{background:var(--s2)}
+.row.sel{background:var(--s2);outline:1px solid var(--ac)}
+.row span:nth-child(3),.row span:nth-child(4){color:var(--tx2)}
+.small{font-size:12px;color:var(--mu)}
+ol{margin:0;padding-left:20px;color:var(--tx2)}
+li{margin-bottom:6px}
+@media (max-width:600px){.row{grid-template-columns:24px 1fr 70px}.row span:nth-child(3){display:none}.hint{display:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Sentry robot concept</h1>
+<p class="sub">Drive the robot with the joystick (or W A S D and the arrow keys). Take it into the yellow H2S area to collect a gas sample, then drive up to the valve and open or close it. This is a concept for field review, not a finished design.</p>
+
+<div id="wrap">
+<canvas id="cv"></canvas>
+<div id="lbl"></div>
+<div id="hud">Ready</div>
+<div class="hint">Drag the scene to rotate, scroll or pinch to zoom.</div>
+<div id="joy"><div id="knob"></div></div>
+</div>
+
+<div class="bar">
+<button id="vbtn" class="pri" disabled>Open valve</button>
+<button id="stow">Stow arm (travel)</button>
+<button id="auto">Auto reach valve</button>
+<button id="reset">Reset robot</button>
+<button id="bays">Toggle shell</button>
+</div>
+
+<h2>Mission</h2>
+<div class="grid">
+<div class="mc"><div class="k">H2S at the probe</div><div class="v" id="m1"></div></div>
+<div class="mc"><div class="k">Gas alarm</div><div class="v" id="m2"></div></div>
+<div class="mc"><div class="k">Sampling</div><div class="v" id="m3"></div></div>
+<div class="mc"><div class="k">Valve</div><div class="v" id="m4"></div></div>
+<div class="mc"><div class="k">Distance to valve</div><div class="v" id="m5"></div></div>
+</div>
+<ol id="log"></ol>
+<p class="small">Gas levels in the yellow area are made up for the demo (peak 45 ppm at the center). Alarm points of 10 and 15 ppm are placeholders, so confirm real site setpoints. Driving is limited to 30 percent speed when the arm is not stowed.</p>
+
+<h2>Arm</h2>
+<div class="bar">
+<label class="ctl">Shoulder angle<input type="range" id="a1" min="-30" max="180" value="180"></label>
+<label class="ctl">Shoulder extension<input type="range" id="ex" min="0" max="250" step="10" value="0"><span id="exv"></span></label>
+<label class="ctl">Elbow<input type="range" id="a2" min="-175" max="20" value="-170"></label>
+</div>
+
+<h2>Valve and reach</h2>
+<div class="bar">
+<label class="ctl">Valve size<select id="nps"><option value="2">NPS 2</option><option value="3">NPS 3</option><option value="4" selected>NPS 4</option><option value="6">NPS 6</option></select></label>
+<label class="ctl">Class<select id="cls"><option value="150">150</option><option value="300" selected>300</option></select></label>
+<label class="ctl">Pipe centerline<input type="range" id="cl" min="200" max="900" step="50" value="300"><span id="clv"></span></label>
+</div>
+<div class="grid">
+<div class="mc"><div class="k">Valve face to face</div><div class="v" id="r1"></div></div>
+<div class="mc"><div class="k">Handwheel height (estimate)</div><div class="v" id="r2"></div></div>
+<div class="mc"><div class="k">Reach to handwheel, max 1000</div><div class="v" id="r3"></div></div>
+<div class="mc"><div class="k">Status</div><div class="v" id="r4"></div></div>
+</div>
+<p class="small">Face to face lengths follow ASME B16.10 gate valve tables. Handwheel diameter and open height are rough estimates and need checking against real site valves. To work the valve, face it head on so the handwheel lines up with the arm.</p>
+
+<h2>Stability</h2>
+<div class="grid">
+<div class="mc"><div class="k">Center of gravity height</div><div class="v" id="s1"></div></div>
+<div class="mc"><div class="k">Tip angle sideways</div><div class="v" id="s2"></div></div>
+<div class="mc"><div class="k">Tip angle forward or back</div><div class="v" id="s3"></div></div>
+<div class="mc"><div class="k">Total mass (target)</div><div class="v" id="s4"></div></div>
+</div>
+<div class="bar"><label class="ctl">Side gust<input type="range" id="wv" min="0" max="60" value="15" style="width:220px"><b id="wvv" style="color:var(--tx);min-width:120px"></b></label></div>
+<div class="grid">
+<div class="mc"><div class="k">Side area</div><div class="v" id="w1"></div></div>
+<div class="mc"><div class="k">Center of pressure</div><div class="v" id="w2"></div></div>
+<div class="mc"><div class="k">Wind force</div><div class="v" id="w3"></div></div>
+<div class="mc"><div class="k">Overturning moment</div><div class="v" id="w4"></div></div>
+<div class="mc"><div class="k">Restoring moment</div><div class="v" id="w5"></div></div>
+<div class="mc"><div class="k">Safety factor</div><div class="v" id="w6"></div></div>
+<div class="mc"><div class="k">Gust to tip it</div><div class="v" id="w7"></div></div>
+</div>
+<p class="small">Model: F = 0.5 x 1.225 x Cd x area x speed squared, with Cd 1.2 and wind from the side. Moments are about the leeward track edge on flat ground. Static only, so slopes, gust shock loading, turning and valve reaction forces are not included. The orange arrow in the scene is the gust.</p>
+
+<h2>Parts</h2>
+<div id="tbl"></div>
+<p class="small" style="margin-top:8px">Stowed size is about 1150 long x 660 wide x 910 high (mm). All masses, bay sizes and positions are starting targets, not final numbers. Click a row to isolate that part.</p>
+
+<h2>What we need from the field</h2>
+<ol>
+<li>Real handwheel diameters, stem heights and breakaway torque for the valves seen on site.</li>
+<li>Typical valve centerline heights and clearances around wellheads, manifolds and tank batteries.</li>
+<li>The hazardous area classification (zone or division) the robot would work in.</li>
+<li>Ground conditions: mud, grating, slopes, curbs and stairs.</li>
+<li>Which jobs matter most: valves, gauges, bolts or gas sampling.</li>
+<li>Radio or tether limits on real pads.</li>
+</ol>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var S=0.001,wrap=document.getElementById('wrap'),cv=document.getElementById('cv'),lbl=document.getElementById('lbl');
+function g(id){return document.getElementById(id)}
+var scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,1,0.05,60);
+var rd=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+scene.add(new THREE.AmbientLight(0xffffff,0.75));var dl=new THREE.DirectionalLight(0xffffff,0.7);dl.position.set(2,4,3);scene.add(dl);
+scene.add(new THREE.GridHelper(8,16,0x8a9594,0xb0b9b8));
+var robot=new THREE.Group();scene.add(robot);var cur=robot,meshes=[];
+function mk(gm,c,p,o){o=o==null?1:o;var m=new THREE.Mesh(gm,new THREE.MeshStandardMaterial({color:c,transparent:true,opacity:o,roughness:0.7}));m.userData={part:p,base:o};cur.add(m);meshes.push(m);return m}
+function bx(w,h,d,x,y,z,c,p,o){var m=mk(new THREE.BoxGeometry(w*S,h*S,d*S),c,p,o);m.position.set(x*S,y*S,z*S);return m}
+function cyl(r,c,p){return mk(new THREE.CylinderGeometry(r*S,r*S,1,16),c,p)}
+function sph(r,c,p){return mk(new THREE.SphereGeometry(r*S,16,12),c,p)}
+function wheel(r,len,x,y,z,c,p){var m=mk(new THREE.CylinderGeometry(r*S,r*S,len*S,24),c,p);m.rotation.x=Math.PI/2;m.position.set(x*S,y*S,z*S);return m}
+function link(m,a,b){var dx=b.x-a.x,dy=b.y-a.y,L=Math.sqrt(dx*dx+dy*dy);m.scale.set(1,L*S,1);m.position.set((a.x+b.x)/2*S,(a.y+b.y)/2*S,0);m.rotation.z=Math.atan2(dy,dx)-Math.PI/2}
+function track(z){
+var sh=new THREE.Shape(),k=S;
+sh.moveTo(-350*k,0);sh.lineTo(350*k,0);sh.absarc(350*k,100*k,100*k,-Math.PI/2,Math.PI/2,false);sh.lineTo(-350*k,200*k);sh.absarc(-350*k,100*k,100*k,Math.PI/2,Math.PI*1.5,false);
+var gg=new THREE.ExtrudeGeometry(sh,{depth:120*k,bevelEnabled:false});gg.translate(0,0,-60*k);
+var m=mk(gg,0x4A4A47,1);m.position.set(0,0,z*k);
+wheel(78,132,-350,100,z,0x888780,1);wheel(78,132,350,100,z,0x888780,1);
+[-210,-70,70,210].forEach(function(x){wheel(46,134,x,52,z,0xB4B2A9,1)});
+[-120,120].forEach(function(x){wheel(22,134,x,176,z,0xB4B2A9,1)});
+for(var i=-440;i<=440;i+=40){bx(14,14,126,i,3,z,0x6B6A66,1)}
+}
+var P=[
+{n:'Tank style tracks (2)',d:'900 x 120 x 200 each',m:'18 kg each',a:[0,60,340],c:0x4A4A47},
+{n:'Chassis frame',d:'800 x 420 x 60',m:'12 kg',a:[330,230,0],c:0x888780},
+{n:'Battery bay',d:'220 x 360 x 160',m:'18 kg',a:[-190,380,0],c:0xBA7517},
+{n:'Controller board bay',d:'160 x 300 x 120',m:'3 kg',a:[0,380,0],c:0x378ADD},
+{n:'Motor driver bay',d:'120 x 300 x 100',m:'4 kg',a:[140,380,0],c:0x7F77DD},
+{n:'Ex d enclosure shell',d:'520 x 420 x 220',m:'14 kg',a:[-50,490,215],c:0x5F5E5A},
+{n:'Gas sensor module',d:'120 x 160 x 100',m:'3 kg',a:[510,350,0],c:0x1D9E75},
+{n:'Sample probe and line',d:'tube 20 dia, 130 long',m:'1 kg',a:[700,260,0],c:0xD85A30},
+{n:'Camera mast and head',d:'mast 330, head 140 x 100 x 90',m:'4 kg',a:[-300,905,0],c:0x534AB7},
+{n:'Radio antenna',d:'300 tall',m:'0.5 kg',a:[-290,790,160],c:0xD4537E},
+{n:'5 axis arm, telescoping shoulder',d:'shoulder 400 retracted to 650, forearm 350',m:'14 kg',a:[170,615,0],c:0x0F6E56},
+{n:'Gripper and valve wheel tool',d:'about 100 long',m:'2 kg',a:[0,0,0],c:0xE24B4A}
+];
+track(270);track(-270);
+bx(800,60,420,0,230,0,P[1].c,2);
+var shell=bx(520,220,420,-50,370,0,P[5].c,6,0.18);
+bx(220,160,360,-190,370,0,P[2].c,3,0.95);
+bx(160,120,300,0,370,0,P[3].c,4,0.95);
+bx(120,100,300,140,370,0,P[4].c,5,0.95);
+bx(120,100,160,510,300,0,P[6].c,7);
+var pr=cyl(10,P[7].c,8);pr.rotation.z=Math.PI/2;pr.scale.y=130*S;pr.position.set(635*S,260*S,0);
+var ms=cyl(18,P[8].c,9);ms.scale.y=330*S;ms.position.set(-300*S,645*S,0);
+bx(90,100,140,-300,860,0,P[8].c,9);
+var an=cyl(7,P[9].c,10);an.scale.y=300*S;an.position.set(-290*S,630*S,160*S);
+var tur=cyl(60,P[10].c,11);tur.scale.y=70*S;tur.position.set(170*S,515*S,0);
+var l1=cyl(34,P[10].c,11),l1b=cyl(26,0x5DCAA5,11),l2=cyl(24,P[10].c,11),j0=sph(40,P[10].c,11),j1=sph(36,P[10].c,11),j2=sph(30,P[10].c,11);
+var tl=bx(40,100,40,0,0,0,P[11].c,12);
+var cgb=sph(26,0xE24B4A,'V'),cgl=cyl(3,0xE24B4A,'V');
+var arrow=new THREE.ArrowHelper(new THREE.Vector3(0,0,1),new THREE.Vector3(0,0.3,-0.9),0.5,0xEF9F27,0.1,0.07);robot.add(arrow);
+cur=scene;
+
+var GX=-1.8,GZ=1.8,GR=0.9,gz=new THREE.Group(),clouds=[];
+gz.position.set(GX,0,GZ);scene.add(gz);
+function disc(r,o){var m=new THREE.Mesh(new THREE.CircleGeometry(r,48),new THREE.MeshBasicMaterial({color:0xEF9F27,transparent:true,opacity:o,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.position.y=0.003;gz.add(m)}
+disc(GR,0.2);disc(GR*0.6,0.2);disc(GR*0.3,0.25);
+var rg=new THREE.Mesh(new THREE.RingGeometry(GR-0.02,GR,64),new THREE.MeshBasicMaterial({color:0xBA7517,side:THREE.DoubleSide}));rg.rotation.x=-Math.PI/2;rg.position.y=0.005;gz.add(rg);
+for(var ci=0;ci<7;ci++){var an2=ci*0.9,rr=0.15+0.08*ci,cm=new THREE.Mesh(new THREE.SphereGeometry(0.16+0.02*(ci%3),12,10),new THREE.MeshBasicMaterial({color:0xD4B21A,transparent:true,opacity:0.17}));
+cm.position.set(Math.cos(an2)*rr,0.15+0.08*(ci%3),Math.sin(an2)*rr);cm.userData.y=cm.position.y;gz.add(cm);clouds.push(cm)}
+
+var VPX=2.6,VPZ=-1.2,valveG=new THREE.Group();valveG.position.set(VPX,0,VPZ);scene.add(valveG);
+var VD={2:{od:60,f1:178,f3:216,hd:200,oh:420},3:{od:89,f1:203,f3:282,hd:250,oh:520},4:{od:114,f1:229,f3:305,hd:300,oh:650},6:{od:168,f1:267,f3:403,hd:350,oh:850}};
+var VI={cl:300,oh:650},hwG=null,pipeM=null,valveOpen=false,op=null,hwAng=0;
+var S0={x:170,y:560},L2=350,LMAX=650,H={x:0,y:0,z:0};
+var FIX=[[36,0,100,0],[12,0,230,0],[18,-190,370,0],[3,0,370,0],[4,140,370,0],[14,-50,370,0],[3,510,300,0],[1,635,260,0],[4,-300,700,0],[0.5,-290,630,160],[4,170,515,0]];
+var AFIX=[[0.18,100],[0.1144,370],[0.048,230],[0.012,300],[0.0132,645],[0.009,860],[0.0042,630],[0.0084,515]];
+var CG={m:0,x:0,y:0,z:0},AR={a:0,h:0},tp={x:0,y:0},sel=-1;
+function setValveLook(){if(pipeM)pipeM.material.color.setHex(valveOpen?0x5DCAA5:0x888780);g('m4').textContent=valveOpen?'OPEN':'CLOSED';g('vbtn').textContent=valveOpen?'Close valve':'Open valve'}
+function buildValve(){
+valveG.traverse(function(o){var k=meshes.indexOf(o);if(k>=0)meshes.splice(k,1);if(o.geometry)o.geometry.dispose()});
+while(valveG.children.length)valveG.remove(valveG.children[0]);
+var v=VD[g('nps').value],cl=+g('cl').value,f=g('cls').value==='150'?v.f1:v.f3;
+cur=valveG;
+pipeM=cyl(v.od/2,0x888780,'V');pipeM.rotation.x=Math.PI/2;pipeM.scale.y=1300*S;pipeM.position.set(0,cl*S,0);
+bx(v.od*1.2,v.od*1.2,f,0,cl,0,0x185FA5,'V');
+var st=cyl(14,0x5F5E5A,'V'),sl=v.oh-v.od*0.6;st.scale.y=sl*S;st.position.set(0,(cl+v.od*0.6+sl/2)*S,0);
+bx(40,cl,40,0,cl/2,550,0x5F5E5A,'V');bx(40,cl,40,0,cl/2,-550,0x5F5E5A,'V');
+hwG=new THREE.Group();hwG.position.set(0,(cl+v.oh)*S,0);hwG.rotation.y=hwAng;valveG.add(hwG);cur=hwG;
+var tr=mk(new THREE.TorusGeometry(v.hd/2*S,12*S,8,28),0xA32D2D,'V');tr.rotation.x=Math.PI/2;
+bx(v.hd,10,10,0,0,0,0xA32D2D,'V');bx(10,10,v.hd,0,0,0,0xA32D2D,'V');
+cur=scene;
+VI={cl:cl,oh:v.oh};
+g('clv').textContent=cl+' mm';g('r1').textContent=f+' mm';g('r2').textContent=(cl+v.oh)+' mm';
+setValveLook();hl();
+}
+var tmp=new THREE.Vector3(),tmp2=new THREE.Vector3();
+function updH(){robot.updateMatrixWorld(true);valveG.updateMatrixWorld(true);tmp.set(0,(VI.cl+VI.oh)*S,0);valveG.localToWorld(tmp);robot.worldToLocal(tmp);H.x=tmp.x*1000;H.y=tmp.y*1000;H.z=tmp.z*1000}
+function wind(){
+var v=+g('wv').value,A=AR.a,h=AR.h;
+g('wvv').textContent=v+' m/s ('+Math.round(v*2.237)+' mph)';
+var F=0.5*1.225*1.2*A*v*v,Mo=F*h/1000,Mr=CG.m*9.81*(330-CG.z)/1000;
+g('w1').textContent=A.toFixed(2)+' m2';g('w2').textContent=Math.round(h)+' mm';g('w3').textContent=Math.round(F)+' N';
+g('w4').textContent=Math.round(Mo)+' N m';g('w5').textContent=Math.round(Mr)+' N m';
+g('w6').textContent=Mo>0.5?(Mr/Mo).toFixed(1):'high';
+var vc=Math.sqrt(2*Mr/(1.225*1.2*A*h/1000));
+g('w7').textContent=Math.round(vc)+' m/s ('+Math.round(vc*2.237)+' mph)';
+var len=Math.min(1.2,0.15+F/400);arrow.position.set(CG.x*S,h*S,-0.95);arrow.setLength(len,0.1,0.07);
+}
+function arm(){
+var a=+g('a1').value*Math.PI/180,e=+g('a2').value*Math.PI/180,ext=+g('ex').value,Lc=400+ext;
+g('exv').textContent=ext+' mm';
+var u={x:Math.cos(a),y:Math.sin(a)};
+var p1={x:S0.x+Lc*u.x,y:S0.y+Lc*u.y};
+var p2={x:p1.x+L2*Math.cos(a+e),y:p1.y+L2*Math.sin(a+e)};
+link(l1,S0,{x:S0.x+300*u.x,y:S0.y+300*u.y});link(l1b,{x:S0.x+150*u.x,y:S0.y+150*u.y},p1);link(l2,p1,p2);
+j0.position.set(S0.x*S,S0.y*S,0);j1.position.set(p1.x*S,p1.y*S,0);j2.position.set(p2.x*S,p2.y*S,0);
+tl.position.set(p2.x*S,p2.y*S,0);tl.rotation.z=a+e-Math.PI/2;tp=p2;
+var items=FIX.concat([[6,(S0.x+p1.x)/2,(S0.y+p1.y)/2,0],[4,(p1.x+p2.x)/2,(p1.y+p2.y)/2,0],[2,p2.x,p2.y,0]]);
+var M=0,X=0,Y=0,Z=0;items.forEach(function(i){M+=i[0];X+=i[0]*i[1];Y+=i[0]*i[2];Z+=i[0]*i[3]});
+X/=M;Y/=M;Z/=M;CG={m:M,x:X,y:Y,z:Z};
+cgb.position.set(X*S,Y*S,Z*S);cgl.scale.y=Y*S;cgl.position.set(X*S,Y*S/2,Z*S);
+var side=Math.atan((330-Math.abs(Z))/Y)*180/Math.PI,fw=Math.atan((450-X)/Y)*180/Math.PI,bk=Math.atan((450+X)/Y)*180/Math.PI;
+g('s1').textContent=Math.round(Y)+' mm';g('s2').textContent=side.toFixed(1)+' deg';g('s3').textContent=Math.min(fw,bk).toFixed(1)+' deg';g('s4').textContent=Math.round(M)+' kg';
+var ar=AFIX.concat([[Lc/1000*0.068,(S0.y+p1.y)/2],[0.35*0.048,(p1.y+p2.y)/2],[0.004,p2.y]]);
+var At=0,Ah=0;ar.forEach(function(i){At+=i[0];Ah+=i[0]*i[1]});AR={a:At,h:Ah/At};
+wind();
+}
+function ac(x){return Math.acos(Math.max(-1,Math.min(1,x)))}
+function goIK(tx,ty){
+var dx=tx-S0.x,dy=ty-S0.y,d=Math.sqrt(dx*dx+dy*dy),phi=Math.atan2(dy,dx),a,e,Lc;
+Lc=Math.min(LMAX,Math.max(400,d-L2+80));
+if(d>=Lc+L2){a=phi;e=0}else{a=phi+ac((Lc*Lc+d*d-L2*L2)/(2*Lc*d));e=-(Math.PI-ac((Lc*Lc+L2*L2-d*d)/(2*Lc*L2)))}
+g('ex').value=Math.round((Lc-400)/10)*10;
+g('a1').value=Math.max(-30,Math.min(180,Math.round(a*180/Math.PI)));g('a2').value=Math.max(-175,Math.min(20,Math.round(e*180/Math.PI)));arm()}
+function reach(){var dx=H.x-S0.x,dy=H.y-S0.y,d=Math.sqrt(dx*dx+dy*dy);
+var msg,ok=false;
+if(Math.abs(H.z)>100)msg='Line up, off by '+Math.round(Math.abs(H.z))+' mm';
+else if(H.x<=300)msg='Face the valve';
+else if(d>LMAX+L2)msg='Short by '+Math.round(d-LMAX-L2)+' mm';
+else{msg='In reach';ok=true}
+return {d:d,ok:ok,msg:msg}}
+function stowed(){return +g('ex').value===0&&+g('a1').value>=170}
+g('wv').oninput=wind;
+g('stow').onclick=function(){if(op)return;g('a1').value=180;g('a2').value=-170;g('ex').value=0;arm()};
+g('auto').onclick=function(){if(op)return;var r=reach();if(r.ok)goIK(H.x,H.y);else g('hud').textContent='Cannot reach yet: '+r.msg};
+g('vbtn').onclick=function(){var r=reach();if(!r.ok||op)return;goIK(H.x,H.y);op={t:0,dir:valveOpen?-1:1,a0:hwAng}};
+g('reset').onclick=function(){robot.position.set(0,0,0);psi=0;op=null;samp={t:0,done:false,n:0};g('log').innerHTML='';g('stow').click()};
+['a1','a2','ex'].forEach(function(i){g(i).oninput=arm});
+['nps','cls','cl'].forEach(function(i){g(i).oninput=buildValve});
+function hl(){meshes.forEach(function(m){var p=m.userData.part;m.material.opacity=(sel<0||p==='V'||p===sel)?m.userData.base:0.07})}
+g('bays').onclick=function(){shell.userData.base=shell.userData.base<0.5?1:0.18;hl()};
+var tb=g('tbl'),tags=[];
+P.forEach(function(p,i){
+var r=document.createElement('div');r.className='row';r.tabIndex=0;
+r.innerHTML='<span><b>'+(i+1)+'</b></span><span>'+p.n+'</span><span>'+p.d+'</span><span>'+p.m+'</span>';
+function pick(){sel=(sel===i+1)?-1:i+1;[].forEach.call(tb.children,function(c,k){c.classList.toggle('sel',sel===k+1)});hl()}
+r.onclick=pick;r.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}};
+tb.appendChild(r);
+var t=document.createElement('div');t.className='tag';t.textContent=i+1;lbl.appendChild(t);tags.push(t)});
+function wtag(txt){var t=document.createElement('div');t.className='tag';t.textContent=txt;lbl.appendChild(t);return t}
+var tv=wtag('Valve'),tg2=wtag('H2S area');
+
+var jx=0,jy=0,jd=false,joy=g('joy'),kn=g('knob');
+function jm(e){var r=joy.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),m=Math.min(1,Math.hypot(dx,dy)/33),an=Math.atan2(dy,dx);jx=Math.cos(an)*m;jy=-Math.sin(an)*m;kn.style.transform='translate('+(jx*33)+'px,'+(-jy*33)+'px)'}
+joy.onpointerdown=function(e){e.stopPropagation();jd=true;joy.setPointerCapture(e.pointerId);jm(e)};
+joy.onpointermove=function(e){if(jd)jm(e)};
+joy.onpointerup=joy.onpointercancel=function(){jd=false;jx=0;jy=0;kn.style.transform='none'};
+var keys={};
+window.addEventListener('keydown',function(e){var k=e.key.toLowerCase();if(/^(w|a|s|d|arrowup|arrowdown|arrowleft|arrowright)$/.test(k)){var t=document.activeElement.tagName;if(k.indexOf('arrow')===0&&(t==='INPUT'||t==='SELECT'))return;keys[k]=true;if(k.indexOf('arrow')===0)e.preventDefault()}});
+window.addEventListener('keyup',function(e){delete keys[e.key.toLowerCase()]});
+
+var az=-0.9,el=0.4,dist=3.8,drag=false,lx=0,ly=0,tg=new THREE.Vector3(0,0.4,0);
+wrap.onpointerdown=function(e){drag=true;lx=e.clientX;ly=e.clientY;wrap.style.cursor='grabbing'};
+window.addEventListener('pointerup',function(){drag=false;wrap.style.cursor='grab'});
+window.addEventListener('pointermove',function(e){if(!drag)return;az-=(e.clientX-lx)*0.006;el=Math.max(0.05,Math.min(1.4,el+(e.clientY-ly)*0.006));lx=e.clientX;ly=e.clientY});
+wrap.addEventListener('wheel',function(e){e.preventDefault();dist=Math.max(1.5,Math.min(10,dist+e.deltaY*0.003))},{passive:false});
+var pd=0;
+wrap.addEventListener('touchmove',function(e){if(e.touches.length===2){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pd)dist=Math.max(1.5,Math.min(10,dist-(d-pd)*0.01));pd=d}},{passive:true});
+wrap.addEventListener('touchend',function(){pd=0});
+function posW(p,v3){var v=v3.clone().project(cam);p.style.display=v.z>1?'none':'flex';p.style.left=((v.x+1)/2*wrap.clientWidth)+'px';p.style.top=((1-v.y)/2*wrap.clientHeight)+'px'}
+
+var psi=0,samp={t:0,done:false,n:0},last=performance.now(),tt=0;
+function gasAt(x,z){var d=Math.hypot(x-GX,z-GZ);return d<GR?45*Math.pow(1-d/GR,1.3):0}
+function loop(now){
+var dt=Math.min(0.05,(now-last)/1000);last=now;tt+=dt;
+var kx=((keys.d||keys.arrowright)?1:0)-((keys.a||keys.arrowleft)?1:0),ky=((keys.w||keys.arrowup)?1:0)-((keys.s||keys.arrowdown)?1:0);
+var ix=Math.max(-1,Math.min(1,jx+kx)),iy=Math.max(-1,Math.min(1,jy+ky));
+if(op){ix=0;iy=0}
+var lim=stowed()?1:0.3,v=iy*0.7*lim,w=ix*1.1*lim;
+psi-=w*dt;robot.position.x=Math.max(-3.8,Math.min(3.8,robot.position.x+Math.cos(psi)*v*dt));robot.position.z=Math.max(-3.8,Math.min(3.8,robot.position.z-Math.sin(psi)*v*dt));
+robot.rotation.y=psi;
+var speed=Math.abs(v)+Math.abs(w)*0.3;
+updH();
+robot.localToWorld(tmp2.set(0.7,0.26,0));
+var ppm=gasAt(tmp2.x,tmp2.z),inZ=Math.hypot(tmp2.x-GX,tmp2.z-GZ)<GR;
+if(inZ){if(!samp.done){if(speed<0.03){samp.t+=dt;if(samp.t>=3){samp.done=true;samp.n++;var li=document.createElement('li');li.textContent='Sample '+samp.n+': '+Math.round(ppm)+' ppm H2S, '+(ppm>=15?'high alarm':ppm>=10?'low alarm':'clear');g('log').appendChild(li)}}else samp.t=Math.max(0,samp.t-dt)}}else{samp.t=0;samp.done=false}
+g('m1').textContent=ppm.toFixed(0)+' ppm';
+var al=ppm>=15?'HIGH':ppm>=10?'LOW':'Clear';g('m2').textContent=al;g('m2').style.color=ppm>=10?'var(--wn)':'var(--tx)';
+g('m3').textContent=!inZ?'Waiting':samp.done?'Sample taken':'Hold still '+Math.round(samp.t/3*100)+'%';
+g('m5').textContent=Math.hypot(robot.position.x-VPX,robot.position.z-VPZ).toFixed(2)+' m';
+var r=reach();g('r3').textContent=Math.round(r.d)+' mm';g('r4').textContent=r.msg;
+g('vbtn').disabled=!(r.ok&&!op);
+if(op){op.t+=dt;var f=Math.min(1,op.t/3);hwAng=op.a0+op.dir*f*Math.PI*6;if(hwG)hwG.rotation.y=hwAng;if(f>=1){valveOpen=!valveOpen;op=null;setValveLook()}}
+var hud=[];if(!stowed()&&!op)hud.push('Arm out, speed limited to 30%');
+if(op)hud.push((op.dir>0?'Opening':'Closing')+' valve');else if(inZ&&!samp.done)hud.push('In H2S area, hold still to sample');else if(inZ)hud.push('H2S sample taken');else if(r.ok)hud.push('Valve in reach, press '+g('vbtn').textContent);else hud.push('Driving');
+g('hud').textContent=hud.join('. ');
+clouds.forEach(function(c,i){c.position.y=c.userData.y+0.04*Math.sin(tt*1.2+i)});
+var w2=wrap.clientWidth,h2=wrap.clientHeight;if(cv.width!==Math.round(w2*devicePixelRatio)){rd.setPixelRatio(devicePixelRatio);rd.setSize(w2,h2,false);cam.aspect=w2/h2;cam.updateProjectionMatrix()}
+tg.lerp(tmp.set(robot.position.x,0.4,robot.position.z),0.15);
+cam.position.set(tg.x+dist*Math.cos(el)*Math.sin(az),tg.y+dist*Math.sin(el),tg.z+dist*Math.cos(el)*Math.cos(az));cam.lookAt(tg);
+rd.render(scene,cam);
+P.forEach(function(p,i){var a=p.a;if(i===10)a=[S0.x,S0.y+60,0];if(i===11)a=[tp.x,tp.y+70,0];posW(tags[i],robot.localToWorld(new THREE.Vector3(a[0]*S,a[1]*S,a[2]*S)))});
+posW(tv,valveG.localToWorld(new THREE.Vector3(0,(VI.cl+VI.oh+120)*S,0)));
+posW(tg2,new THREE.Vector3(GX,0.9,GZ));
+requestAnimationFrame(loop)}
+buildValve();arm();updH();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
