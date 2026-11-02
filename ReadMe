@@ -1,0 +1,62 @@
+# Sentry Robot Concept
+
+An interactive 3D concept of Sentry, a tracked robot that goes into hazardous upstream oil and gas areas so people do not have to. It is meant to turn valves, read gauges and sample air for gases like H2S while the operator stays outside the zone.
+
+This is a concept for field review, not a finished or certified design.
+
+## Live demo
+
+Add your link here after turning on GitHub Pages:
+https://YOURUSERNAME.github.io/REPONAME/
+
+## What you can do in the demo
+
+1. **Drive the robot** with the on screen joystick, or W A S D and the arrow keys.
+2. **Sample gas.** Drive the front probe into the yellow H2S area and hold still. The robot takes a sample after 3 seconds and logs the reading.
+3. **Work a valve.** Face the gate valve head on so the handwheel lines up with the arm, then press Open valve or Close valve.
+4. **Move the arm** with the shoulder angle, shoulder extension and elbow sliders, or use Stow arm for travel and Auto reach valve.
+5. **Check stability.** See the live center of gravity, tip angles, and a side gust calculator with overturning and restoring moments.
+6. **Change the valve.** Pick the size (NPS 2, 3, 4 or 6), class (150 or 300) and pipe centerline height to test arm reach.
+7. **Inspect the parts.** Click any row in the parts table to isolate that piece, and use Toggle shell to see the internal bays.
+
+## Concept design
+
+* Tank style continuous tracks for wet, uneven ground
+* 5 axis arm with a telescoping shoulder (400 mm retracted to 650 mm) and a 350 mm forearm
+* Gripper and valve wheel tool
+* Enclosure with planned bays for the battery, controller board and motor drivers, designed with explosive area protection (Ex d) in mind
+* Gas sensor module and low sample probe, since H2S pools near the ground
+* Camera mast and radio antenna for the operator link
+* Stowed size about 1150 long x 660 wide x 910 high (mm), about 110 kg total
+
+## What is sourced and what is not
+
+* Valve face to face lengths follow the ASME B16.10 gate valve tables.
+* Pipe outside diameters are standard pipe sizes.
+* Handwheel diameters and open heights are rough estimates and need checking against real site valves.
+* Masses, bay sizes, side areas and positions are starting targets, not final numbers.
+* H2S levels in the demo are made up (peak 45 ppm at the center). The 10 and 15 ppm alarm points are placeholders, so confirm real site setpoints.
+* The wind model is static only: F = 0.5 x 1.225 x Cd x area x speed squared, with Cd 1.2 and wind from the side. It does not include slopes, gust shock loading, turning or valve reaction forces.
+
+## Known limits
+
+* The robot does not collide with the pipe or other objects yet.
+* The arm is modeled in one plane, so it shows reach and posture rather than full 5 axis motion.
+* Explosive area certification (ATEX, IECEx) is not part of this project. The design follows the principles and the reasoning is shown, but nothing here is certified.
+
+## Feedback wanted from the field
+
+1. Real handwheel diameters, stem heights and breakaway torque for valves seen on site
+2. Typical valve centerline heights and clearances around wellheads, manifolds and tank batteries
+3. The hazardous area classification (zone or division) the robot would work in
+4. Ground conditions such as mud, grating, slopes, curbs and stairs
+5. Which jobs matter most: valves, gauges, bolts or gas sampling
+6. Radio or tether limits on real pads
+
+## Running it yourself
+
+The whole project is one file, `index.html`. Open it in any modern browser, or host it with GitHub Pages. It loads the Three.js library from a public code library, so it needs an internet connection.
+
+## Project
+
+Sentry is a Siemens competition project by a mechanical engineering student team.
